@@ -1,0 +1,176 @@
+import os
+import json
+from mitmproxy import http
+from flask import Flask, jsonify, send_from_directory
+from datetime import datetime
+import threading
+
+app = Flask(__name__)
+LOG_FILE = "traffic_log.json"
+FILTERED_LOG_FILE = "filtered_traffic_log.json"
+BLOCKLIST_FILE = "adult_sites_blocklist.txt"
+PROXY_PORT = 8081  # Proxy port
+FLASK_PORT = 5000  # Flask app port
+
+# Ensure the log and blocklist files exist
+if not os.path.exists(LOG_FILE):
+    with open(LOG_FILE, "w") as f:
+        json.dump([], f)
+
+if not os.path.exists(FILTERED_LOG_FILE):
+    with open(FILTERED_LOG_FILE, "w") as f:
+        json.dump([], f)
+
+if not os.path.exists(BLOCKLIST_FILE):
+    with open(BLOCKLIST_FILE, "w") as f:
+        f.write("# Add adult site domains here, one per line\n")
+
+class TrafficLogger:
+    """Class to log HTTP traffic and filter based on a blocklist."""
+
+    def __init__(self):
+        self.blocklist = self.load_blocklist()
+
+    def load_blocklist(self):
+        """Load the blocklist from the file."""
+        try:
+            with open(BLOCKLIST_FILE, "r") as f:
+                return set(line.strip() for line in f if line.strip() and not line.startswith("#"))
+        except Exception as e:
+            print(f"Error loading blocklist: {e}")
+            return set()
+
+    def is_personal_request(self, user_agent: str, url: str, method: str) -> bool:
+        """
+        Determine if the request comes from a user-initiated action based on User-Agent, URL patterns, and method.
+        """
+        browser_signatures = ["Mozilla", "Chrome", "Safari", "Firefox", "Edg"]
+        allowed_methods = ["GET"]
+
+        # Check if User-Agent contains a browser signature
+        is_browser = any(signature in user_agent for signature in browser_signatures)
+
+        # Filter by HTTP method
+        is_allowed_method = method in allowed_methods
+
+        return is_browser and is_allowed_method
+
+    def is_blocked_site(self, url: str) -> bool:
+        """Check if the URL is in the blocklist."""
+        return any(domain in url for domain in self.blocklist)
+
+    def request(self, flow: http.HTTPFlow):
+        """Log each HTTP request."""
+        try:
+            url = flow.request.url
+            user_agent = flow.request.headers.get("User-Agent", "")
+            method = flow.request.method
+
+            # Filter traffic
+            if self.is_personal_request(user_agent, url, method):
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                entry = {"timestamp": timestamp, "url": url}
+
+                # Append to the general log
+                with open(LOG_FILE, "r+") as f:
+                    try:
+                        data = json.load(f)
+                        data.append(entry)
+                        f.seek(0)
+                        json.dump(data, f, indent=4)
+                    except json.JSONDecodeError:
+                        f.seek(0)
+                        json.dump([entry], f, indent=4)
+
+                # If the site is in the blocklist, log it separately
+                if self.is_blocked_site(url):
+                    with open(FILTERED_LOG_FILE, "r+") as f:
+                        try:
+                            data = json.load(f)
+                            data.append(entry)
+                            f.seek(0)
+                            json.dump(data, f, indent=4)
+                        except json.JSONDecodeError:
+                            f.seek(0)
+                            json.dump([entry], f, indent=4)
+        except Exception as e:
+            print(f"Error logging request: {e}")
+
+addons = [TrafficLogger()]
+
+@app.route("/test", methods=["GET"])
+def test():
+    """Test endpoint to verify Flask server is working."""
+    return "Flask server is working!", 200
+
+@app.route("/api/logs", methods=["GET"])
+def get_logs():
+    """API endpoint to retrieve logs."""
+    try:
+        if not os.path.exists(LOG_FILE):
+            return jsonify([]), 200
+
+        with open(LOG_FILE, "r") as f:
+            logs = json.load(f)
+        return jsonify(logs), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/filtered_logs", methods=["GET"])
+def get_filtered_logs():
+    """API endpoint to retrieve filtered logs."""
+    try:
+        if not os.path.exists(FILTERED_LOG_FILE):
+            return jsonify([]), 200
+
+        with open(FILTERED_LOG_FILE, "r") as f:
+            logs = json.load(f)
+        return jsonify(logs), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/blocklist", methods=["GET"])
+def get_blocklist():
+    """API endpoint to retrieve the blocklist."""
+    try:
+        with open(BLOCKLIST_FILE, "r") as f:
+            blocklist = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+        return jsonify(blocklist), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve(path):
+    """
+    Serve static files from the 'frontend' directory.
+    If a requested file is not found, serve the index.html.
+    """
+    try:
+        if path and os.path.exists(os.path.join("frontend", path)):
+            return send_from_directory("frontend", path)
+        return send_from_directory("frontend", "index.html")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+def run_flask():
+    """Run the Flask server."""
+    try:
+        app.run(host="0.0.0.0", port=FLASK_PORT)
+    except Exception as e:
+        print(f"Error starting Flask server: {e}")
+
+def run_mitmproxy():
+    """Run the Mitmproxy server."""
+    try:
+        from mitmproxy.tools.main import mitmdump
+        mitmdump(["-s", __file__, "--listen-port", str(PROXY_PORT)])
+    except Exception as e:
+        print(f"Error starting Mitmproxy: {e}")
+
+if __name__ == "__main__":
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
+
+    run_mitmproxy()
