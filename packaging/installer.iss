@@ -36,9 +36,12 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
 [Files]
 Source: "..\dist\URLMonitor\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[INI]
+Filename: "{app}\Dashboard.url"; Section: "InternetShortcut"; Key: "URL"; String: "http://127.0.0.1:5000/"
+
 [Icons]
 Name: "{group}\URL Monitor"; Filename: "{app}\URLMonitor.exe"; Parameters: "start"
-Name: "{group}\URL Monitor dashboard"; Filename: "http://127.0.0.1:5000/"
+Name: "{group}\URL Monitor dashboard"; Filename: "{app}\Dashboard.url"
 Name: "{group}\URL Monitor status"; Filename: "{cmd}"; Parameters: "/k ""{app}\URLMonitor.exe"" status"
 Name: "{group}\Restore proxy settings"; Filename: "{cmd}"; Parameters: "/k ""{app}\URLMonitor.exe"" restore"
 Name: "{autodesktop}\URL Monitor"; Filename: "{app}\URLMonitor.exe"; Parameters: "start"; Tasks: desktopicon
@@ -47,6 +50,9 @@ Name: "{autodesktop}\URL Monitor"; Filename: "{app}\URLMonitor.exe"; Parameters:
 Filename: "{app}\URLMonitor.exe"; Parameters: "autostart on"; Flags: runhidden; Tasks: autostart
 Filename: "{app}\URLMonitor.exe"; Parameters: "autostart off"; Flags: runhidden; Tasks: not autostart
 Filename: "{app}\URLMonitor.exe"; Parameters: "start"; Description: "Start URL Monitor now"; Flags: postinstall nowait skipifsilent
+
+[UninstallDelete]
+Type: files; Name: "{app}\Dashboard.url"
 
 [UninstallRun]
 ; Stop URL Monitor, then put the user's proxy settings back (the forced stop
