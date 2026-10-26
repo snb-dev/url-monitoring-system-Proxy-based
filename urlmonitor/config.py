@@ -11,7 +11,7 @@ from pathlib import Path
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 WEB_DIR = PACKAGE_DIR / "web"
-# Version 0.1 kept its data in a "data" folder next to the program.
+# Earlier versions kept their data in a "data" folder next to the program.
 LEGACY_DATA_DIR = PACKAGE_DIR.parent / "data"
 
 LOG_MODES = ("pages", "all")
@@ -94,7 +94,7 @@ class Settings:
 
 
 def migrate_legacy_data(paths, legacy_dir=LEGACY_DATA_DIR):
-    """Move a version 0.1 data folder to the new location. Returns True if moved."""
+    """Move an earlier version's data folder to the new location. Returns True if moved."""
     if paths.data_dir.exists() or not legacy_dir.is_dir():
         return False
     paths.data_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -135,9 +135,7 @@ def _get(table, key, expected_type, default, section):
     value = table.get(key, default)
     # bool is a subclass of int, so compare types exactly.
     if type(value) is not expected_type:
-        raise ConfigError(
-            f"[{section}] {key} must be {TYPE_NAMES[expected_type]}, not {value!r}"
-        )
+        raise ConfigError(f"[{section}] {key} must be {TYPE_NAMES[expected_type]}, not {value!r}")
     return value
 
 

@@ -36,9 +36,7 @@ def is_trusted(cert_dir):
 
 def install(cert_dir):
     """Windows only: add the CA to the user's trusted roots. Windows asks to confirm."""
-    result = subprocess.run(
-        ["certutil", "-user", "-addstore", "Root", str(ca_cert_file(cert_dir))]
-    )
+    result = subprocess.run(["certutil", "-user", "-addstore", "Root", str(ca_cert_file(cert_dir))])
     return result.returncode == 0 and is_trusted(cert_dir)
 
 

@@ -217,6 +217,7 @@ main {
   gap: 0.15rem 0.75rem;
   padding: 0.6rem 0.5rem;
   border-bottom: 1px solid var(--border);
+  border-left: 3px solid transparent;
 }
 
 .visit:last-child {
@@ -225,7 +226,7 @@ main {
 
 .visit.flagged {
   background: var(--flag-bg);
-  border-left: 3px solid var(--flag);
+  border-left-color: var(--flag);
 }
 
 .visit time {

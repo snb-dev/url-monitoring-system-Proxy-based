@@ -50,9 +50,7 @@ def make_monitor(tmp_path):
         watch = tmp_path / "blocklist.txt"
         watch.write_text("bad.com\n")
         storage = Storage(tmp_path / "history.db")
-        monitor = Monitor(
-            storage, Blocklist([watch]), Settings(dashboard_password="x", **settings)
-        )
+        monitor = Monitor(storage, Blocklist([watch]), Settings(dashboard_password="x", **settings))
         return monitor, storage
 
     return make

@@ -1,0 +1,52 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! **Please don't include browsing history, your dashboard password, or files from the `certs` folder.**
+        For security problems, use [private reporting](https://github.com/snb-dev/url-monitoring-system-Proxy-based/security/advisories/new) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start URL Monitor
+        2. Open ...
+        3. See ...
+  - type: textarea
+    id: status
+    attributes:
+      label: Output of the status command
+      description: Start menu → "URL Monitor status", or run `urlmonitor status`.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: URL Monitor version
+      placeholder: "0.2.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install it?
+      options:
+        - Installer
+        - pip
+        - From source (start.bat or python -m urlmonitor)
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Windows version and browser
+      placeholder: Windows 11 23H2, Chrome 130

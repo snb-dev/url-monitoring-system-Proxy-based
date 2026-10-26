@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import logging
 import socket
+import sys
 import threading
 import webbrowser
 
@@ -26,7 +27,7 @@ from .config import (
     migrate_legacy_data,
 )
 from .storage import Storage
-from .winproxy import IS_WINDOWS, SystemProxy
+from .winproxy import IS_WINDOWS, SystemProxy, is_autostart_enabled, set_autostart
 
 LOCALHOST = "127.0.0.1"
 DEFAULT_PROXY_PORT = 8081
@@ -82,7 +83,7 @@ def trust_ca(paths):
         "\nURL Monitor needs to add its own certificate to your trusted certificates so it\n"
         "can see the addresses of HTTPS pages. The certificate is created on this computer\n"
         "and its private key never leaves it. Windows will ask you to confirm.\n"
-        "Remove it at any time with: python -m urlmonitor uninstall-cert\n"
+        "Uninstalling URL Monitor, or its uninstall-cert command, removes it again.\n"
     )
     return certs.install(paths.cert_dir)
 
@@ -113,12 +114,14 @@ def cmd_start(paths, args):
             return 1
 
     proxy_address = f"{LOCALHOST}:{settings.proxy_port}"
-    system_proxy = SystemProxy(paths.proxy_state, proxy_address) if IS_WINDOWS else None
-    if system_proxy and system_proxy.restore():
+    if IS_WINDOWS and SystemProxy(paths.proxy_state, proxy_address).restore():
         print("Restored proxy settings left over from a run that did not shut down cleanly.")
+    # In manual mode the user points their browser at the proxy themselves.
+    automatic = IS_WINDOWS and not getattr(args, "manual", False)
+    system_proxy = SystemProxy(paths.proxy_state, proxy_address) if automatic else None
 
     certs.ensure_ca(paths.cert_dir)
-    if IS_WINDOWS:
+    if automatic:
         if not trust_ca(paths):
             print(
                 "The certificate was not installed, so HTTPS websites would stop working.\n"
@@ -174,7 +177,7 @@ def cmd_status(paths, args):
     print(f"URL Monitor {__version__}")
     print(f"Data folder:     {paths.data_dir}")
     if not paths.config_file.exists():
-        print("Not set up yet. Run: python -m urlmonitor start")
+        print("Not set up yet. Start URL Monitor to set it up.")
         return 0
     try:
         settings = load_settings(paths)
@@ -192,6 +195,7 @@ def cmd_status(paths, args):
         if certs.ca_cert_file(paths.cert_dir).exists():
             trusted = certs.is_trusted(paths.cert_dir)
             print(f"Certificate:     {'trusted' if trusted else 'NOT trusted'}")
+        print(f"Start at sign-in: {'on' if is_autostart_enabled() else 'off'}")
     blocklist = Blocklist([paths.blocklist, paths.downloaded_blocklist])
     print(f"Watched domains: {len(blocklist)}")
     if paths.database.exists():
@@ -217,6 +221,19 @@ def cmd_restore(paths, args):
     else:
         proxy.set_restore_on_next_login(False)
         print("Proxy settings are not set by URL Monitor; nothing to restore.")
+    return 0
+
+
+def cmd_autostart(paths, args):
+    if not IS_WINDOWS:
+        print("Starting at sign-in is only available on Windows.")
+        return 1
+    if args.action != "status":
+        set_autostart(args.action == "on")
+    if is_autostart_enabled():
+        print("URL Monitor starts when you sign in to Windows.")
+    else:
+        print("URL Monitor does not start when you sign in to Windows.")
     return 0
 
 
@@ -260,6 +277,7 @@ COMMANDS = {
     "start": (cmd_start, "start monitoring (the default)"),
     "status": (cmd_status, "show whether URL Monitor is running and set up"),
     "restore": (cmd_restore, "restore your proxy settings if web pages stopped loading"),
+    "autostart": (cmd_autostart, "start URL Monitor when you sign in to Windows (on/off)"),
     "install-cert": (cmd_install_cert, "trust URL Monitor's certificate"),
     "uninstall-cert": (cmd_uninstall_cert, "remove the certificate and its private key"),
     "update-blocklist": (cmd_update_blocklist, "download a public domain list to flag"),
@@ -275,12 +293,30 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command")
     for name, (_, help_text) in COMMANDS.items():
         command = commands.add_parser(name, help=help_text)
-        if name == "update-blocklist":
+        if name == "start":
+            command.add_argument(
+                "--manual",
+                action="store_true",
+                help="don't change Windows proxy or certificate settings; "
+                "point your browser at the proxy yourself",
+            )
+        elif name == "autostart":
+            command.add_argument(
+                "action", nargs="?", choices=["on", "off", "status"], default="status"
+            )
+        elif name == "update-blocklist":
             command.add_argument(
                 "--url",
                 default=DEFAULT_BLOCKLIST_URL,
                 help="hosts file or plain domain list to download (default: %(default)s)",
             )
+    if argv is None:
+        argv = sys.argv[1:]
+    # Run by Windows at sign-in after a crash (see SystemProxy.set_restore_on_next_login).
+    if len(argv) == 2 and argv[0] == "_restore":
+        if IS_WINDOWS:
+            SystemProxy(argv[1], address=None).restore()
+        return 0
     args = parser.parse_args(argv)
 
     handler = COMMANDS[args.command or "start"][0]

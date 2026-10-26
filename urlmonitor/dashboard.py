@@ -38,9 +38,7 @@ def create_app(storage, blocklist, password):
         auth = request.authorization
         supplied = (auth.password or "").encode("utf-8") if auth else b""
         if not (
-            auth
-            and auth.username == DASHBOARD_USER
-            and hmac.compare_digest(supplied, expected)
+            auth and auth.username == DASHBOARD_USER and hmac.compare_digest(supplied, expected)
         ):
             return Response(
                 "Login required.",

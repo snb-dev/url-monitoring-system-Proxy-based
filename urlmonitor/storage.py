@@ -114,7 +114,7 @@ class Storage:
             return db.execute("DELETE FROM visits WHERE time < ?", (time_ms,)).rowcount
 
     def import_json_log(self, path, is_flagged):
-        """Import a version 0.1 JSON log ([{"timestamp", "url"}, ...]). Returns the count."""
+        """Import an earlier version's JSON log ([{"timestamp", "url"}, ...]). Returns the count."""
         entries = json.loads(path.read_text(encoding="utf-8"))
         rows = []
         for entry in entries:

@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-from urlmonitor import winproxy
+from urlmonitor import cli, winproxy
 from urlmonitor.winproxy import (
     INTERNET_SETTINGS_KEY,
     PROXY_BYPASS,
@@ -34,9 +34,12 @@ class FakeWinreg:
             return False
 
     def OpenKey(self, root, path, reserved=0, access=0):
+        if path not in self.keys:
+            raise FileNotFoundError(path)
         return self._Key(self.keys[path])
 
-    CreateKey = OpenKey
+    def CreateKey(self, root, path):
+        return self._Key(self.keys.setdefault(path, {}))
 
     def QueryValueEx(self, key, name):
         if name not in key.values:
@@ -105,26 +108,41 @@ def test_turn_off_leftover(registry, proxy):
     assert settings["ProxyEnable"] == (0, 4)
 
 
-def test_restore_script_restores(registry, proxy):
-    from urlmonitor import _restore
-
+def test_restore_command_restores(registry, proxy, monkeypatch):
+    monkeypatch.setattr(cli, "IS_WINDOWS", True)
     proxy.enable()
-    _restore.main(["_restore.py", str(proxy.state_file)])
+    command = winproxy.restore_command(proxy.state_file)
+    assert '"_restore"' in command
+    assert cli.main(["_restore", str(proxy.state_file)]) == 0
     assert registry.keys[INTERNET_SETTINGS_KEY]["ProxyServer"] == ("corp:3128", 1)
 
 
-def test_restore_script_runs_standalone(tmp_path):
-    # Windows runs it by path at login, from an unrelated working directory.
+def test_launcher_runs_standalone(tmp_path):
+    # Windows runs it by path at sign-in, from an unrelated working directory.
     result = subprocess.run(
-        [sys.executable, str(winproxy.RESTORE_SCRIPT), str(tmp_path / "missing.json")],
+        [sys.executable, str(winproxy.LAUNCHER_SCRIPT), "--version"],
         cwd=tmp_path,
         capture_output=True,
         text=True,
     )
     assert result.returncode == 0, result.stderr
+    assert result.stdout.startswith("urlmonitor ")
 
 
-def test_restore_command_quotes_paths(tmp_path):
-    command = winproxy.restore_command(tmp_path / "proxy state.json")
-    assert f'"{winproxy.RESTORE_SCRIPT}"' in command
+def test_program_command(tmp_path, monkeypatch):
+    command = winproxy.program_command("_restore", tmp_path / "proxy state.json")
+    assert f'"{winproxy.LAUNCHER_SCRIPT}"' in command
     assert f'"{tmp_path / "proxy state.json"}"' in command
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    assert winproxy.program_command("start") == f'"{sys.executable}" "start"'
+
+
+def test_autostart(registry):
+    run = registry.keys[winproxy.RUN_KEY] = {}
+    assert not winproxy.is_autostart_enabled()
+    winproxy.set_autostart(True)
+    assert winproxy.is_autostart_enabled()
+    assert run[winproxy.RUN_NAME][0].endswith('"start"')
+    winproxy.set_autostart(False)
+    winproxy.set_autostart(False)
+    assert not winproxy.is_autostart_enabled()

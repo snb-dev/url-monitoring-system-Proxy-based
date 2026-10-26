@@ -1,14 +1,19 @@
 # URL Monitor
 
+[![CI](https://github.com/snb-dev/url-monitoring-system-Proxy-based/actions/workflows/ci.yml/badge.svg)](https://github.com/snb-dev/url-monitoring-system-Proxy-based/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 URL Monitor records the websites visited on a Windows computer and flags (or
 blocks) visits to domains on a watch list, such as adult sites. It is intended
 for **parents supervising their own children's computers** and for **people who
 want to hold themselves accountable**.
 
 It works as a local proxy built on [mitmproxy](https://mitmproxy.org/). Browser
-traffic goes through it, and a password-protected dashboard at
-`http://127.0.0.1:5000` shows the history, today's flagged visits and alerts as
-they happen. Everything stays on the computer: nothing is sent anywhere.
+traffic goes through it, and a password-protected dashboard shows the history,
+today's flagged visits, and alerts as they happen. Everything stays on the
+computer: nothing is sent anywhere.
+
+![The URL Monitor dashboard](docs/screenshot.png)
 
 ## Use it responsibly
 
@@ -18,28 +23,16 @@ know about it and have agreed to it, or children in your care. Secretly recordin
 another adult's internet use is illegal in many countries. You are responsible
 for complying with the laws where you live.
 
-## Requirements
+## Install
 
-- Windows 10 or 11. Proxy and certificate setup are automatic only on Windows.
-  On macOS and Linux it runs, but you configure the browser yourself (see below).
-- Python 3.11 or newer from [python.org](https://www.python.org/downloads/).
-  Tick **"Add python.exe to PATH"** during setup.
+1. Download `URLMonitor-Setup-<version>.exe` from the
+   [latest release](https://github.com/snb-dev/url-monitoring-system-Proxy-based/releases/latest).
+2. Run it. Administrator rights are **not** needed. If Windows SmartScreen says
+   it "protected your PC", click **More info → Run anyway**.
+3. Choose whether URL Monitor should start when you sign in (on by default).
 
-Administrator rights are **not** needed.
-
-## Installation
-
-Download the code (**Code → Download ZIP** on GitHub, then extract it) or clone it:
-
-```bat
-git clone https://github.com/snb-dev/url-monitoring-system-Proxy-based.git
-```
-
-Then double-click **`start.bat`**. On the first run it installs the Python
-packages URL Monitor needs.
-
-To install it as a command instead, run `py -3 -m pip install .` in the folder.
-You can then start it from anywhere with `urlmonitor start`.
+Requires Windows 10 or 11 (64-bit). To run from source or on macOS and Linux, see
+[Other ways to run it](#other-ways-to-run-it).
 
 ## First start
 
@@ -48,24 +41,29 @@ On the first start, URL Monitor:
 1. Creates a certificate authority that exists only on this computer, and asks
    Windows to trust it. Windows shows a security warning: click **Yes**. Without
    it, URL Monitor can't read HTTPS pages, so it exits without changing anything.
-2. Generates a dashboard password and prints it. It is also stored in the
+2. Generates a dashboard password and shows it. It is also stored in the
    settings file (see [Settings](#settings)). The dashboard user name is `admin`.
-3. Points the Windows proxy settings at itself (`127.0.0.1:8081`) and opens the
-   dashboard.
+3. Points the Windows proxy settings at itself and opens the dashboard at
+   `http://127.0.0.1:5000`.
 
-Press **Ctrl+C** in the console window to stop. Your original proxy settings are
-put back when it stops.
+URL Monitor runs in a console window, so it is always visible that monitoring is
+on. Close the window or press **Ctrl+C** to stop it; your original proxy
+settings are put back when it stops.
+
+The Start menu has shortcuts to start it, open the dashboard, check its status,
+and restore your proxy settings.
 
 ## Commands
 
-Run these with `start.bat <command>`, `py -3 -m urlmonitor <command>`, or
-`urlmonitor <command>` if you installed it.
+Run `URLMonitor.exe <command>` from the install folder (or `urlmonitor <command>`
+/ `python -m urlmonitor <command>` when running from source).
 
 | Command | What it does |
 | --- | --- |
-| `start` | Start monitoring (the default). |
+| `start` | Start monitoring (the default). `start --manual` leaves Windows settings alone, for pointing a browser at the proxy yourself. |
 | `status` | Show whether it is running, the proxy and certificate state, and how much history is stored. |
 | `restore` | Put your proxy settings back if web pages stop loading. |
+| `autostart on` / `off` | Start URL Monitor when you sign in to Windows, or stop doing so. |
 | `update-blocklist [--url URL]` | Download a public domain list to flag. |
 | `install-cert` | Trust URL Monitor's certificate. |
 | `uninstall-cert` | Remove the certificate and delete its private key. |
@@ -90,7 +88,7 @@ too. Changes are picked up within a few seconds; no restart needed.
 To flag adult sites without maintaining a list yourself, run:
 
 ```bat
-start.bat update-blocklist
+URLMonitor.exe update-blocklist
 ```
 
 This downloads the [StevenBlack/hosts](https://github.com/StevenBlack/hosts)
@@ -129,9 +127,9 @@ block_watched_sites = false
 | macOS | `~/Library/Application Support/URLMonitor` |
 | Linux | `~/.local/share/urlmonitor` |
 
-Set the `URLMON_DATA_DIR` environment variable to use another folder. Version 0.1
-kept its data in a `data` folder next to the program; it is moved to the new
-location, and its JSON logs are imported, on the first start.
+Set the `URLMON_DATA_DIR` environment variable to use another folder. Earlier
+versions kept their data in a `data` folder next to the program; it is moved to
+the new location, and its JSON logs are imported, on the first start.
 
 | File | Contents |
 | --- | --- |
@@ -149,8 +147,9 @@ from Windows and deletes the key.
 ## If web pages stop loading
 
 URL Monitor restores your proxy settings when you press Ctrl+C or close its
-window, and it also arranges a restore at your next Windows login in case the
-computer crashes. If pages still don't load, double-click **`restore_proxy.bat`**.
+window, and it also arranges a restore at your next sign-in in case the computer
+crashes. If pages still don't load, use **Start menu → URL Monitor → Restore
+proxy settings** (or `restore_proxy.bat` when running from source).
 
 To do it by hand: **Settings → Network & internet → Proxy → Manual proxy setup
 → Use a proxy server: Off**.
@@ -160,19 +159,38 @@ To do it by hand: **Settings → Network & internet → Proxy → Manual proxy s
 Firefox has its own certificate list. If it shows certificate errors, open
 `about:config` and set `security.enterprise_roots.enabled` to `true`.
 
-## macOS and Linux
+## Uninstalling
 
-Run `python3 -m urlmonitor start`, then:
+Uninstall **URL Monitor** from **Settings → Apps**. The uninstaller stops it,
+restores your proxy settings, turns off starting at sign-in, and removes the
+certificate (Windows asks you to confirm). Your history and settings stay in the
+data folder; delete that folder to remove them too.
+
+## Other ways to run it
+
+### From source on Windows
+
+Install [Python 3.11 or newer](https://www.python.org/downloads/) (tick **"Add
+python.exe to PATH"**), download or clone this repository, and double-click
+**`start.bat`**. On the first run it installs the Python packages it needs.
+`start.bat <command>` runs any of the [commands](#commands), and `start.bat
+autostart on` makes it start at sign-in.
+
+### With pip
+
+```bash
+pip install git+https://github.com/snb-dev/url-monitoring-system-Proxy-based.git
+urlmonitor start
+```
+
+### macOS and Linux
+
+Run `urlmonitor start` (or `python3 -m urlmonitor start` from a checkout). Proxy
+and certificate setup are automatic only on Windows, so also:
 
 1. Trust `certs/mitmproxy-ca-cert.pem` from the data folder in your browser or
    operating system.
 2. Set the browser's HTTP and HTTPS proxy to `127.0.0.1:8081`.
-
-## Uninstalling
-
-1. Stop URL Monitor (Ctrl+C).
-2. Run `start.bat uninstall-cert`.
-3. Delete the program folder and the data folder.
 
 ## Security
 
@@ -182,14 +200,13 @@ Run `python3 -m urlmonitor start`, then:
 - Each installation creates its own certificate. No certificate or key ships
   with URL Monitor.
 
-## Development
+To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
-```bash
-pip install -e ".[dev]"
-pytest
-```
+## Contributing
 
-The code is in the `urlmonitor` package:
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+development setup, checks, and how releases are made. Changes are listed in
+[CHANGELOG.md](CHANGELOG.md).
 
 | Module | Purpose |
 | --- | --- |
@@ -198,7 +215,7 @@ The code is in the `urlmonitor` package:
 | `storage.py` | SQLite history |
 | `blocklist.py` | Watch list parsing, matching and downloads |
 | `dashboard.py` | Flask API and login; the UI is in `web/` |
-| `winproxy.py`, `_restore.py` | Windows proxy settings and crash recovery |
+| `winproxy.py`, `_launcher.py` | Windows proxy settings, crash recovery and start at sign-in |
 | `certs.py` | Certificate creation and trust |
 | `config.py` | Data folder and `config.toml` |
 

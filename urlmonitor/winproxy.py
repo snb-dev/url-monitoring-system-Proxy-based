@@ -1,4 +1,4 @@
-"""Pointing Windows' per-user proxy settings at URL Monitor, and putting them back."""
+"""Windows integration: per-user proxy settings, crash recovery and start at sign-in."""
 
 import atexit
 import json
@@ -15,6 +15,8 @@ if IS_WINDOWS:
 INTERNET_SETTINGS_KEY = r"Software\Microsoft\Windows\CurrentVersion\Internet Settings"
 RUN_ONCE_KEY = r"Software\Microsoft\Windows\CurrentVersion\RunOnce"
 RUN_ONCE_NAME = "URLMonitorRestoreProxy"
+RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+RUN_NAME = "URLMonitor"
 PROXY_VALUE_NAMES = ("ProxyEnable", "ProxyServer", "ProxyOverride")
 PROXY_BYPASS = "localhost;127.*;<local>"
 REG_SZ = 1
@@ -25,7 +27,7 @@ CTRL_CLOSE_EVENT = 2
 CTRL_LOGOFF_EVENT = 5
 CTRL_SHUTDOWN_EVENT = 6
 
-RESTORE_SCRIPT = Path(__file__).resolve().with_name("_restore.py")
+LAUNCHER_SCRIPT = Path(__file__).resolve().with_name("_launcher.py")
 
 
 def write_json(path, data):
@@ -71,12 +73,43 @@ def notify_proxy_change():
     internet_set_option(None, INTERNET_OPTION_REFRESH, None, 0)
 
 
+def program_command(*args, windowless=False):
+    """A command line that runs URL Monitor with args from any working directory,
+    whether it was installed with the installer, with pip, or is run from source."""
+    if getattr(sys, "frozen", False):
+        parts = [sys.executable]
+    else:
+        python = Path(sys.executable)
+        pythonw = python.with_name("pythonw.exe")
+        if windowless and pythonw.exists():
+            python = pythonw
+        parts = [python, LAUNCHER_SCRIPT]
+    return " ".join(f'"{part}"' for part in [*parts, *args])
+
+
 def restore_command(state_file):
-    python = Path(sys.executable)
-    pythonw = python.with_name("pythonw.exe")
-    if pythonw.exists():
-        python = pythonw
-    return f'"{python}" "{RESTORE_SCRIPT}" "{state_file}"'
+    return program_command("_restore", state_file, windowless=True)
+
+
+def is_autostart_enabled():
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+            winreg.QueryValueEx(key, RUN_NAME)
+        return True
+    except FileNotFoundError:
+        return False
+
+
+def set_autostart(enabled):
+    """Start URL Monitor (in a visible console window) when the user signs in."""
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+        if enabled:
+            winreg.SetValueEx(key, RUN_NAME, 0, REG_SZ, program_command("start"))
+        else:
+            try:
+                winreg.DeleteValue(key, RUN_NAME)
+            except FileNotFoundError:
+                pass
 
 
 class SystemProxy:
@@ -91,9 +124,7 @@ class SystemProxy:
         or the computer shuts down before it can undo the proxy settings itself."""
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, RUN_ONCE_KEY) as key:
             if enabled:
-                winreg.SetValueEx(
-                    key, RUN_ONCE_NAME, 0, REG_SZ, restore_command(self.state_file)
-                )
+                winreg.SetValueEx(key, RUN_ONCE_NAME, 0, REG_SZ, restore_command(self.state_file))
             else:
                 try:
                     winreg.DeleteValue(key, RUN_ONCE_NAME)
