@@ -1,0 +1,16 @@
+# Runtime data: browsing logs, dashboard password and the CA private key.
+# Never commit this folder.
+data/
+
+# Files written into the project folder by older versions
+traffic_log.json
+filtered_traffic_log.json
+adult_sites_blocklist.txt
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.vscode/
+.idea/

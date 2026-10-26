@@ -4,8 +4,8 @@ let lastBlockedNotification = null;
 // Fetch and display logs
 async function fetchTrafficLogs() {
   try {
-    const trafficResponse = await fetch("traffic_log.json");
-    const filteredResponse = await fetch("filtered_traffic_log.json");
+    const trafficResponse = await fetch("/api/logs");
+    const filteredResponse = await fetch("/api/filtered_logs");
 
     if (!trafficResponse.ok || !filteredResponse.ok) {
       throw new Error("Failed to fetch logs");
