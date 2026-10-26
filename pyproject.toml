@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "urlmonitor"
+dynamic = ["version"]
+description = "Record the websites visited on a computer and flag visits to watched domains."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "SNBDev" }]
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0",
+    "mitmproxy>=10.0",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Topic :: Internet :: Proxy Servers",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+urlmonitor = "urlmonitor.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/snb-dev/url-monitoring-system-Proxy-based"
+Issues = "https://github.com/snb-dev/url-monitoring-system-Proxy-based/issues"
+
+[tool.setuptools]
+packages = ["urlmonitor"]
+
+[tool.setuptools.dynamic]
+version = { attr = "urlmonitor.__version__" }
+
+[tool.setuptools.package-data]
+urlmonitor = ["web/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

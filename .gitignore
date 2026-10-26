@@ -1,8 +1,6 @@
-# Runtime data: browsing logs, dashboard password and the CA private key.
-# Never commit this folder.
+# Data written into the program folder by version 0.1 (browsing logs, the
+# dashboard password and the CA private key). Never commit it.
 data/
-
-# Files written into the project folder by older versions
 traffic_log.json
 filtered_traffic_log.json
 adult_sites_blocklist.txt
@@ -10,6 +8,9 @@ adult_sites_blocklist.txt
 __pycache__/
 *.py[cod]
 .pytest_cache/
+build/
+dist/
+*.egg-info/
 .venv/
 venv/
 .vscode/

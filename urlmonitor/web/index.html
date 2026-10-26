@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>URL Monitor</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>URL Monitor</h1>
+      <span id="status" class="status">Connecting…</span>
+    </header>
+
+    <main>
+      <div id="alert" class="alert" role="status" hidden>
+        <span id="alert-text"></span>
+        <button id="alert-dismiss" class="icon-button" type="button" aria-label="Dismiss">×</button>
+      </div>
+
+      <section class="stats" aria-label="Today">
+        <div class="stat">
+          <span class="stat-value" id="stat-visits">–</span>
+          <span class="stat-label">Visits today</span>
+        </div>
+        <div class="stat stat-flagged">
+          <span class="stat-value" id="stat-flagged">–</span>
+          <span class="stat-label">Flagged today</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="stat-watched">–</span>
+          <span class="stat-label">Watched domains</span>
+        </div>
+      </section>
+
+      <section id="top-flagged" class="panel" hidden>
+        <h2>Most flagged today</h2>
+        <ul id="top-flagged-list" class="top-list"></ul>
+      </section>
+
+      <section class="panel">
+        <div class="toolbar">
+          <div class="tabs" role="tablist" aria-label="History">
+            <button id="tab-flagged" role="tab" type="button" aria-selected="true">Flagged</button>
+            <button id="tab-all" role="tab" type="button" aria-selected="false">All history</button>
+          </div>
+          <input id="search" type="search" placeholder="Search URLs" aria-label="Search URLs" />
+        </div>
+        <ol id="visits" class="visits"></ol>
+        <p id="empty" class="empty" hidden></p>
+        <button id="load-more" class="load-more" type="button" hidden>Load older visits</button>
+      </section>
+
+      <footer class="footer">
+        <button id="notify" class="link-button" type="button" hidden>
+          Turn on desktop notifications for flagged visits
+        </button>
+      </footer>
+    </main>
+  </body>
+</html>
